@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대기 중...</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>대기실</h1>
+        <div id="queue-info">
+            <div class="rank-display">
+                <span class="rank-label">현재 대기 순번</span>
+                <span id="rank" class="rank-number">조회 중...</span>
+            </div>
+            <div class="info-row">
+                <span>전체 대기 인원</span>
+                <span id="total">-</span>
+            </div>
+            <div class="info-row">
+                <span>예상 대기 시간</span>
+                <span id="eta">-</span>
+            </div>
+        </div>
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
+        </div>
+        <p id="status-message" class="status">잠시만 기다려 주세요...</p>
+    </div>
+
+    <input type="hidden" id="token" th:value="${token}">
+    <script src="/js/queue.js"></script>
+</body>
+</html>

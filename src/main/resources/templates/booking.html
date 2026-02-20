@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예매 페이지</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>예매 페이지</h1>
+        <div class="success-badge">입장 완료</div>
+        <p>대기열을 통과하셨습니다!</p>
+        <div class="booking-form">
+            <div class="event-info">
+                <h2>2026 Spring Concert</h2>
+                <p>2026.03.15 (일) 18:00</p>
+                <p>서울 올림픽공원 체조경기장</p>
+            </div>
+            <p class="token-info">토큰: <code th:text="${token}"></code></p>
+            <div class="seat-grid">
+                <button class="seat" onclick="this.classList.toggle('selected')">A1</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">A2</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">A3</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">A4</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">B1</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">B2</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">B3</button>
+                <button class="seat" onclick="this.classList.toggle('selected')">B4</button>
+            </div>
+            <button class="btn-primary" onclick="alert('예매가 완료되었습니다!')">
+                결제하기
+            </button>
+        </div>
+    </div>
+</body>
+</html>

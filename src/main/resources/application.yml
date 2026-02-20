@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: QueueGate
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  thymeleaf:
+    cache: false
+  devtools:
+    restart:
+      enabled: false
+
+queue:
+  batch-size: ${QUEUE_BATCH_SIZE:100}
+  schedule-rate: ${QUEUE_SCHEDULE_RATE:1000}
+  active-ttl: 300
+
+server:
+  port: ${SERVER_PORT:8080}
+
+instance:
+  id: ${INSTANCE_ID:app-local}

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueGate - 실시간 모니터링</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background: #0a0a1a;
+            color: #eee;
+            padding: 1.5rem;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .header h1 { color: #e94560; font-size: 1.6rem; }
+        .header .status-dot {
+            width: 10px; height: 10px;
+            background: #2ecc71;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .header .live { font-size: 0.9rem; color: #2ecc71; }
+        .header .instance-tag {
+            background: #0f3460;
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #3498db;
+            margin-left: 1rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 1.2rem;
+            text-align: center;
+            border: 1px solid #1a3a6e;
+        }
+        .card .label { color: #888; font-size: 0.85rem; margin-bottom: 0.4rem; }
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e94560;
+            font-variant-numeric: tabular-nums;
+        }
+        .card.green .value { color: #2ecc71; }
+        .card.blue .value { color: #3498db; }
+        .card.yellow .value { color: #f39c12; }
+        .card.purple .value { color: #9b59b6; }
+
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .chart-box {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 1.2rem;
+            border: 1px solid #1a3a6e;
+        }
+        .chart-box h3 {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        .chart-box canvas { max-height: 220px; }
+
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* 인스턴스 상태 */
+        .instance-panel {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 1.2rem;
+            border: 1px solid #1a3a6e;
+        }
+        .instance-panel h3 {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        .instance-row {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #0f3460;
+        }
+        .instance-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-right: 0.6rem;
+        }
+        .instance-dot.c1 { background: #e94560; }
+        .instance-dot.c2 { background: #2ecc71; }
+        .instance-dot.c3 { background: #3498db; }
+        .instance-name { flex: 1; font-size: 0.85rem; }
+        .instance-count {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 0.8rem;
+            min-width: 50px;
+            text-align: right;
+        }
+        .instance-bar-bg {
+            width: 120px;
+            height: 8px;
+            background: #0f3460;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .instance-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .instance-bar.c1 { background: #e94560; }
+        .instance-bar.c2 { background: #2ecc71; }
+        .instance-bar.c3 { background: #3498db; }
+
+        /* 로그 영역 */
+        .log-section {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 1.2rem;
+            border: 1px solid #1a3a6e;
+        }
+        .log-section h3 {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+        .log-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 0.8rem;
+        }
+        .log-entry {
+            padding: 0.3rem 0.5rem;
+            border-bottom: 1px solid #0f3460;
+            color: #aaa;
+        }
+        .log-entry .time { color: #555; margin-right: 0.5rem; }
+        .log-entry .inst { margin-right: 0.5rem; font-weight: bold; }
+        .log-entry .inst.c1 { color: #e94560; }
+        .log-entry .inst.c2 { color: #2ecc71; }
+        .log-entry .inst.c3 { color: #3498db; }
+        .log-entry.admit { color: #2ecc71; }
+        .log-entry.spike { color: #e94560; }
+
+        @media (max-width: 900px) {
+            .cards { grid-template-columns: repeat(2, 1fr); }
+            .charts { grid-template-columns: 1fr; }
+            .bottom-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>QueueGate Monitor</h1>
+        </div>
+        <div>
+            <span class="instance-tag" id="respondingInstance">-</span>
+            <span class="live"><span class="status-dot"></span>LIVE</span>
+        </div>
+    </div>
+
+    <!-- 핵심 지표 카드 -->
+    <div class="cards">
+        <div class="card">
+            <div class="label">대기 중</div>
+            <div class="value" id="waiting">0</div>
+        </div>
+        <div class="card green">
+            <div class="label">활성 사용자</div>
+            <div class="value" id="active">0</div>
+        </div>
+        <div class="card blue">
+            <div class="label">총 입장 처리</div>
+            <div class="value" id="processed">0</div>
+        </div>
+        <div class="card yellow">
+            <div class="label">초당 처리량</div>
+            <div class="value" id="throughput">0</div>
+        </div>
+        <div class="card purple">
+            <div class="label">총 요청 수</div>
+            <div class="value" id="totalRequests">0</div>
+        </div>
+    </div>
+
+    <!-- 차트 -->
+    <div class="charts">
+        <div class="chart-box">
+            <h3>대기열 / 활성 사용자 추이</h3>
+            <canvas id="queueChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>초당 처리량 (Throughput)</h3>
+            <canvas id="throughputChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>인스턴스별 요청 분배</h3>
+            <canvas id="instanceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 하단: 인스턴스 + 로그 -->
+    <div class="bottom-row">
+        <div class="instance-panel">
+            <h3>인스턴스 현황 (Load Balancing)</h3>
+            <div id="instanceList">
+                <div class="instance-row">
+                    <span class="instance-dot c1"></span>
+                    <span class="instance-name">app-1</span>
+                    <span class="instance-count" id="inst1Count">0</span>
+                    <div class="instance-bar-bg"><div class="instance-bar c1" id="inst1Bar" style="width:0%"></div></div>
+                </div>
+                <div class="instance-row">
+                    <span class="instance-dot c2"></span>
+                    <span class="instance-name">app-2</span>
+                    <span class="instance-count" id="inst2Count">0</span>
+                    <div class="instance-bar-bg"><div class="instance-bar c2" id="inst2Bar" style="width:0%"></div></div>
+                </div>
+                <div class="instance-row">
+                    <span class="instance-dot c3"></span>
+                    <span class="instance-name">app-3</span>
+                    <span class="instance-count" id="inst3Count">0</span>
+                    <div class="instance-bar-bg"><div class="instance-bar c3" id="inst3Bar" style="width:0%"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="log-section">
+            <h3>이벤트 로그</h3>
+            <div class="log-list" id="logList"></div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_POINTS = 60;
+        const instanceCounts = { 'app-1': 0, 'app-2': 0, 'app-3': 0 };
+        let totalRequests = 0;
+
+        const chartDefaults = {
+            animation: { duration: 300 },
+            scales: {
+                x: { ticks: { color: '#555', maxTicksLimit: 10 }, grid: { color: '#1a3a6e' } },
+                y: { beginAtZero: true, ticks: { color: '#555' }, grid: { color: '#1a3a6e' } }
+            },
+            plugins: { legend: { labels: { color: '#aaa', boxWidth: 12 } } },
+            responsive: true,
+            maintainAspectRatio: false
+        };
+
+        // 대기열/활성 차트
+        const queueChart = new Chart(document.getElementById('queueChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: '대기 중', data: [], borderColor: '#e94560', backgroundColor: 'rgba(233,69,96,0.1)', fill: true, tension: 0.3, pointRadius: 0 },
+                    { label: '활성', data: [], borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.1)', fill: true, tension: 0.3, pointRadius: 0 }
+                ]
+            },
+            options: chartDefaults
+        });
+
+        // 처리량 차트
+        const throughputChart = new Chart(document.getElementById('throughputChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: '처리량/초', data: [], borderColor: '#f39c12', backgroundColor: 'rgba(243,156,18,0.1)', fill: true, tension: 0.3, pointRadius: 0 }]
+            },
+            options: chartDefaults
+        });
+
+        // 인스턴스 도넛 차트
+        const instanceChart = new Chart(document.getElementById('instanceChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['app-1', 'app-2', 'app-3'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#e94560', '#2ecc71', '#3498db'],
+                    borderColor: '#16213e',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#aaa', boxWidth: 12 } }
+                }
+            }
+        });
+
+        function formatNum(n) {
+            if (n >= 100000) return (n / 1000).toFixed(0) + 'K';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function timeLabel() {
+            var d = new Date();
+            return d.getHours().toString().padStart(2, '0') + ':' +
+                   d.getMinutes().toString().padStart(2, '0') + ':' +
+                   d.getSeconds().toString().padStart(2, '0');
+        }
+
+        function instClass(id) {
+            if (id === 'app-1') return 'c1';
+            if (id === 'app-2') return 'c2';
+            if (id === 'app-3') return 'c3';
+            return '';
+        }
+
+        let prevWaiting = 0;
+        let prevProcessed = 0;
+
+        function addLog(msg, cls, instId) {
+            var list = document.getElementById('logList');
+            var entry = document.createElement('div');
+            entry.className = 'log-entry ' + (cls || '');
+            var instHtml = instId ? '<span class="inst ' + instClass(instId) + '">[' + instId + ']</span>' : '';
+            entry.innerHTML = '<span class="time">' + timeLabel() + '</span>' + instHtml + msg;
+            list.insertBefore(entry, list.firstChild);
+            if (list.children.length > 80) list.removeChild(list.lastChild);
+        }
+
+        function updateInstanceBars() {
+            var total = instanceCounts['app-1'] + instanceCounts['app-2'] + instanceCounts['app-3'];
+            if (total === 0) total = 1;
+
+            document.getElementById('inst1Count').textContent = formatNum(instanceCounts['app-1']);
+            document.getElementById('inst2Count').textContent = formatNum(instanceCounts['app-2']);
+            document.getElementById('inst3Count').textContent = formatNum(instanceCounts['app-3']);
+
+            document.getElementById('inst1Bar').style.width = (instanceCounts['app-1'] / total * 100) + '%';
+            document.getElementById('inst2Bar').style.width = (instanceCounts['app-2'] / total * 100) + '%';
+            document.getElementById('inst3Bar').style.width = (instanceCounts['app-3'] / total * 100) + '%';
+
+            instanceChart.data.datasets[0].data = [
+                instanceCounts['app-1'], instanceCounts['app-2'], instanceCounts['app-3']
+            ];
+            instanceChart.update();
+        }
+
+        async function poll() {
+            try {
+                var res = await fetch('/api/queue/monitor');
+                var instId = res.headers.get('X-Instance-Id') || 'unknown';
+                var d = await res.json();
+
+                // 인스턴스 카운트
+                if (instanceCounts.hasOwnProperty(instId)) {
+                    instanceCounts[instId]++;
+                } else if (d.instanceId && instanceCounts.hasOwnProperty(d.instanceId)) {
+                    instId = d.instanceId;
+                    instanceCounts[instId]++;
+                }
+                totalRequests++;
+
+                // 카드 업데이트
+                document.getElementById('waiting').textContent = formatNum(d.waitingCount);
+                document.getElementById('active').textContent = formatNum(d.activeCount);
+                document.getElementById('processed').textContent = formatNum(d.totalProcessed);
+                document.getElementById('throughput').textContent = d.throughputPerSec.toFixed(1);
+                document.getElementById('totalRequests').textContent = formatNum(totalRequests);
+                document.getElementById('respondingInstance').textContent = instId;
+
+                // 라인 차트 업데이트
+                var label = timeLabel();
+
+                queueChart.data.labels.push(label);
+                queueChart.data.datasets[0].data.push(d.waitingCount);
+                queueChart.data.datasets[1].data.push(d.activeCount);
+                if (queueChart.data.labels.length > MAX_POINTS) {
+                    queueChart.data.labels.shift();
+                    queueChart.data.datasets[0].data.shift();
+                    queueChart.data.datasets[1].data.shift();
+                }
+                queueChart.update();
+
+                throughputChart.data.labels.push(label);
+                throughputChart.data.datasets[0].data.push(d.throughputPerSec);
+                if (throughputChart.data.labels.length > MAX_POINTS) {
+                    throughputChart.data.labels.shift();
+                    throughputChart.data.datasets[0].data.shift();
+                }
+                throughputChart.update();
+
+                updateInstanceBars();
+
+                // 이벤트 로그
+                if (d.totalProcessed > prevProcessed) {
+                    var admitted = d.totalProcessed - prevProcessed;
+                    addLog(admitted + '명 입장 처리 (총 ' + formatNum(d.totalProcessed) + '명)', 'admit', instId);
+                }
+                if (d.waitingCount > prevWaiting + 500) {
+                    addLog('대기열 급증: ' + formatNum(prevWaiting) + ' -> ' + formatNum(d.waitingCount), 'spike', instId);
+                }
+
+                prevWaiting = d.waitingCount;
+                prevProcessed = d.totalProcessed;
+
+            } catch (e) {
+                addLog('모니터링 오류: ' + e.message, 'spike', null);
+            }
+
+            setTimeout(poll, 1000);
+        }
+
+        poll();
+    </script>
+</body>
+</html>
