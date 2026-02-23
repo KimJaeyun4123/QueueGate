@@ -29,6 +29,16 @@ redis-server &
 
 ## 3. Locust 부하 테스트
 
+### 3-1. UI 모드 (권장) — monitor 페이지에서 직접 제어
+
+# Locust 웹 서버 실행 (포트 8089)
+locust -f locustfile.py --host=http://localhost --web-port=8089
+
+- 이후 http://localhost/monitor 에서 바로 시작/중지 가능
+- 엔드포인트별 RPS · 응답시간 · 실패율을 모니터 화면에서 실시간 확인
+
+### 3-2. Headless 모드 (CLI 자동화)
+
 # 10,000명 테스트 (Docker 클러스터 대상, 포트 80)
 locust -f locustfile.py --host=http://localhost --headless \
   -u 10000 -r 500 --run-time 60s
@@ -51,4 +61,4 @@ redis-cli shutdown
 
 ## 순서 요약
 
-빌드 → Redis 초기화 → Docker 클러스터 시작 → 모니터링 페이지 열기 → Locust 테스트 실행
+빌드 → Redis 초기화 → Docker 클러스터 시작 → Locust 웹 서버 실행 → 모니터링 페이지(http://localhost/monitor)에서 테스트 시작
